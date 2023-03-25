@@ -1,0 +1,6 @@
+[submodule "flutter_reactive_ble"]
+	path = flutter_reactive_ble
+	url = git@github.com:marcel-cd/flutter_reactive_ble.git
+[submodule "flutter_ble_peripheral"]
+	path = flutter_ble_peripheral
+	url = git@github.com:marcel-cd/flutter_ble_peripheral.git

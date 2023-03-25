@@ -1,0 +1,6 @@
+#+title: Wirepas Flutter Example Application
+#+author: marcel@clever.design
+
+* Build
+- do a recursive clone of this repository
+- run ~flutter pub get~ and ~flutter pub run~
