@@ -248,8 +248,7 @@ class MessageHandler {
   DateTime _lastPing = DateTime.now();
   final _blePeripheral = FlutterBlePeripheral();
   List<Message> _messages = <Message>[];
-  Timer? _timeoutTimer;
-  Timer? _stopTimer;
+  int _blockMessage = 1;
 
   factory MessageHandler(Ref ref) {
     return MessageHandler._(ref);
@@ -285,36 +284,22 @@ class MessageHandler {
       Message? message = _messages
           .firstWhereOrNull((e) => e.state == MessageState.queueMessage);
       if (message == null) {
-        // no more messages to send, we can start the timer to shutdown advertising
-        if (await _blePeripheral.isAdvertising) {
-          // in case of android, keep advertising open, as we can change Data
-          if (Platform.isAndroid) {
-            _stopTimer = Timer(const Duration(milliseconds: 500), () async {
-              await _blePeripheral.stop();
-              if (_ref!.read(appActivityProvider.notifier).state !=
-                      AppActivityState.uploading &&
-                  _ref!.read(appActivityProvider.notifier).state !=
-                      AppActivityState.uploadingSuccess) {
-                _ref!.read(appActivityProvider.notifier).state =
-                    AppActivityState.idle;
-              }
-            });
-          } else {
-            await _blePeripheral.stop();
-            if (_ref!.read(appActivityProvider.notifier).state !=
-                    AppActivityState.uploading &&
-                _ref!.read(appActivityProvider.notifier).state !=
-                    AppActivityState.uploadingSuccess) {
-              _ref!.read(appActivityProvider.notifier).state =
-                  AppActivityState.idle;
-            }
-          }
+        // no more messages to send, we can stop advertising
+        // if (await _blePeripheral.isAdvertising) {
+        await _blePeripheral.stop();
+        if (_ref!.read(appActivityProvider.notifier).state !=
+                AppActivityState.uploading &&
+            _ref!.read(appActivityProvider.notifier).state !=
+                AppActivityState.uploadingSuccess) {
+          _ref!.read(appActivityProvider.notifier).state =
+              AppActivityState.idle;
         }
+        // }
+        // }
         _isAdvertising = false;
         return;
       }
       // we have a new message to send, we dont need to stop advertising
-      _stopTimer?.cancel();
       _isAdvertising = true;
       _setMessageState(message.messageId, MessageState.sendingMessage);
       debugPrint("send message: ${message.messageId} / ${message.commandName}");
@@ -343,13 +328,14 @@ class MessageHandler {
         );
       }
       // start timeout timer
-      _timeoutTimer = Timer(Duration(milliseconds: message.timeoutMs), () {
-        debugPrint('timeout message: ${message.messageId}');
-        _setMessageState(message.messageId, MessageState.timeoutMessage);
-        _timeoutTimer = null;
-        // send next Message if needed
-        _sendMessage();
-      });
+      var counter = message.timeoutMs ~/ 20;
+      _blockMessage = message.messageId;
+      while (_blockMessage > 0 && counter >= 0) {
+        counter--;
+        await Future.delayed(const Duration(milliseconds: 20));
+      }
+      _setMessageState(message.messageId, MessageState.timeoutMessage);
+      _sendMessage();
     });
   }
 
@@ -406,19 +392,8 @@ class MessageHandler {
   }
 
   void setMessageReceived(int messageId) {
-    _messages = [
-      for (final message in _messages)
-        if (message.messageId != messageId)
-          message
-        else
-          message.copyWith(state: MessageState.done)
-    ];
-    // if the actual message has received, cancle timer:
-    if (!containsMessage(messageId)) {
-      _timeoutTimer?.cancel();
-    }
-    // send next Message
-    _sendMessage();
+    _setMessageState(messageId, MessageState.done);
+    if (_blockMessage == messageId) _blockMessage = 0;
   }
 
   void addMessage(CommandPayload payload,
