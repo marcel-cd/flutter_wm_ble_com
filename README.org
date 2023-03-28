@@ -1,10 +1,12 @@
 #+title: Wirepas Flutter Example Application
 #+author: marcel.graber@steinel.ch
 
-Flutte r demo app for uploading a firmware to a wirepas Network (Sink Node)
-Please have also a look at the Firmware Repo:
+Flutter demo app for uploading a firmware to a wirepas Network (Sink Node)
+
+Please have a look at the Firmware Repo:
 [[https://github.com/marcel-cd/wm-ble-com][https://github.com/marcel-cd/wm-ble-com]]
-and in a short intro:
+
+and short intro:
 https://www.youtube.com/watch?v=ZgPi__hAqQQ&t=488s
 
 * Build
